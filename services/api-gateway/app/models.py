@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -51,6 +52,14 @@ class Company(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "source",
+            "external_id",
+            name="uq_job_source_external_id",
+        ),
+    )
+
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
@@ -60,6 +69,15 @@ class Job(Base):
     company_id: Mapped[int] = mapped_column(
         ForeignKey("companies.id"),
         nullable=False,
+    )
+    external_id: Mapped[str | None] = mapped_column(
+    String(255),
+    nullable=True,
+    )
+
+    source: Mapped[str | None] = mapped_column(
+    String(100),
+    nullable=True,
     )
 
     canonical_title: Mapped[str] = mapped_column(
@@ -453,3 +471,4 @@ class ScraperHealEvent(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+

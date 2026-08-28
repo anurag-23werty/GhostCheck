@@ -1,11 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict,HttpUrl
 
-
+class CollectionRequest(BaseModel):
+    url: str
 class JobCreate(BaseModel):
     company_name: str
     company_domain: str | None = None
+    external_id: str | None = None
+    
+
 
     title: str
     location: str | None = None
@@ -50,7 +54,18 @@ class JobSnapshotResponse(BaseModel):
 
     captured_at: datetime
 
+class SourceObservationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    job_id: int
+    source: str
+    observed_at: datetime
+    is_present: bool
+    source_url: str | None
+
 
 class JobHistoryResponse(BaseModel):
     job: JobResponse
     snapshots: list[JobSnapshotResponse]
+    observations: list[SourceObservationResponse]
