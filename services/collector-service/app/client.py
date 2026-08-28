@@ -15,7 +15,7 @@ async def submit_job(job: CollectedJob):
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             f"{API_GATEWAY_URL}/api/v1/jobs",
-            json=job.model_dump(),
+            json=job.model_dump(mode="json"),
         )
 
         response.raise_for_status()

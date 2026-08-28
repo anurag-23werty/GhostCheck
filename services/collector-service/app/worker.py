@@ -1,15 +1,23 @@
 import asyncio
 
+from app.client import submit_job
+from app.normalization.jobs import normalize_linkedin_job
 from app.queue import dequeue_collection
+from app.sources.linkedin import collect_job_by_url
 
 
 async def process_collection(job: dict):
     print("Processing collection:", job)
 
-    # Real Bright Data collection will be added later.
-    await asyncio.sleep(1)
+    url = job["url"]
 
-    print("Collection completed:", job)
+    raw_job = await collect_job_by_url(url)
+
+    normalized_job = normalize_linkedin_job(raw_job)
+
+    result = await submit_job(normalized_job)
+
+    print("Job submitted:", result)
 
 
 async def worker():
@@ -23,6 +31,7 @@ async def worker():
 
         try:
             await process_collection(job)
+
         except Exception as exc:
             print("Collection failed:", exc)
 
