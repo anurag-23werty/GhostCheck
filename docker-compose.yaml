@@ -21,6 +21,7 @@ services:
       timeout: 5s
       retries: 5
 
+
   redis:
     image: redis:8-alpine
     container_name: ghostcheck-redis
@@ -30,6 +31,65 @@ services:
 
     volumes:
       - redis_data:/data
+
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+
+    container_name: ghostcheck-api-gateway
+
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ghostcheck:ghostcheck@postgres:5432/ghostcheck
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  collector-service:
+    build:
+      context: ./services/collector-service
+
+    container_name: ghostcheck-collector
+
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8000
+      REDIS_URL: redis://redis:6379
+
+    ports:
+      - "8001:8001"
+
+    depends_on:
+      - api-gateway
+      - redis
+
+
+  collector-worker:
+    build:
+      context: ./services/collector-service
+
+    container_name: ghostcheck-collector-worker
+
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8000
+      REDIS_URL: redis://redis:6379
+
+    command:
+      [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "app.worker"
+      ]
+
+    depends_on:
+      - redis
+      - api-gateway
 
 
 volumes:
