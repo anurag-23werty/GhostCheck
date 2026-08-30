@@ -3,15 +3,25 @@ import asyncio
 from app.client import submit_job
 from app.normalization.jobs import normalize_linkedin_job
 from app.queue import dequeue_collection
-from app.sources.linkedin import collect_job_by_url
+from app.sources.linkedin import collect_job_by_url as collect_linkedin
+from app.sources.router import detect_source
 
 
 async def process_collection(job: dict):
     print("Processing collection:", job)
 
     url = job["url"]
+    source = detect_source(url)
 
-    raw_job = await collect_job_by_url(url)
+    print("Detected source:", source)
+
+    if source != "linkedin":
+        raise ValueError(
+            f"Source '{source}' is currently unsupported. "
+            "Only LinkedIn collection is enabled."
+        )
+
+    raw_job = await collect_linkedin(url)
 
     normalized_job = normalize_linkedin_job(raw_job)
 

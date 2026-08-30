@@ -1,39 +1,51 @@
-import os
+from app.client import submit_job
+from app.normalization.jobs import (
+    normalize_linkedin_job,
+    normalize_indeed_job,
+    normalize_glassdoor_job,
+)
+from app.queue import dequeue_collection
+from app.sources.linkedin import collect_job_by_url as collect_linkedin
+from app.sources.indeed import collect_job_by_url as collect_indeed
+from app.sources.glassdoor import collect_job_by_url as collect_glassdoor
+from app.sources.router import detect_source
 
-import httpx
 
+async def process_collection(job: dict):
 
-BRIGHT_DATA_API_KEY = os.getenv("BRIGHT_DATA_API_KEY")
-BRIGHT_DATA_ZONE = os.getenv("BRIGHT_DATA_ZONE")
+    print("Processing collection:", job)
 
+    url = job["url"]
 
-async def scrape_page(url: str) -> str:
-    if not BRIGHT_DATA_API_KEY:
-        raise RuntimeError("BRIGHT_DATA_API_KEY is not configured")
+    source = detect_source(url)
 
-    if not BRIGHT_DATA_ZONE:
-        raise RuntimeError("BRIGHT_DATA_ZONE is not configured")
+    print("Detected source:", source)
 
-    endpoint = "https://api.brightdata.com/request"
+    if source == "linkedin":
 
-    headers = {
-        "Authorization": f"Bearer {BRIGHT_DATA_API_KEY}",
-        "Content-Type": "application/json",
-    }
+        raw_job = await collect_linkedin(url)
 
-    payload = {
-        "zone": BRIGHT_DATA_ZONE,
-        "url": url,
-        "format": "raw",
-    }
+        normalized_job = normalize_linkedin_job(raw_job)
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(
-            endpoint,
-            headers=headers,
-            json=payload,
+    elif source == "indeed":
+
+        raw_job = await collect_indeed(url)
+
+        normalized_job = normalize_indeed_job(raw_job)
+
+    elif source == "glassdoor":
+
+        raw_job = await collect_glassdoor(url)
+
+        normalized_job = normalize_glassdoor_job(raw_job)
+
+    else:
+
+        raise ValueError(
+            f"Collector for source '{source}' "
+            "is not implemented yet"
         )
 
-        response.raise_for_status()
+    result = await submit_job(normalized_job)
 
-        return response.text
+    print("Job submitted:", result)

@@ -41,6 +41,7 @@ services:
 
     environment:
       DATABASE_URL: postgresql+psycopg2://ghostcheck:ghostcheck@postgres:5432/ghostcheck
+      REDIS_URL: redis://redis:6379
 
     ports:
       - "8000:8000"
@@ -48,6 +49,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 
   collector-service:
@@ -78,11 +81,21 @@ services:
       API_GATEWAY_URL: http://api-gateway:8000
       REDIS_URL: redis://redis:6379
 
+      # Bright Data
+      BRIGHT_DATA_API_KEY: ${BRIGHT_DATA_API_KEY}
+      BRIGHT_DATA_URL: ${BRIGHT_DATA_URL}
+
+      # Source-specific datasets
+      LINKEDIN_JOBS_DATASET_ID: ${LINKEDIN_JOBS_DATASET_ID}
+      INDEED_JOBS_DATASET_ID: ${INDEED_JOBS_DATASET_ID}
+      GLASSDOOR_JOBS_DATASET_ID: ${GLASSDOOR_JOBS_DATASET_ID}
+
     command:
       [
         "uv",
         "run",
         "python",
+        "-u",
         "-m",
         "app.worker"
       ]
@@ -90,6 +103,51 @@ services:
     depends_on:
       - redis
       - api-gateway
+
+
+  detection-service:
+    build:
+      context: ./services/detection-service
+
+    container_name: ghostcheck-detection
+
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ghostcheck:ghostcheck@postgres:5432/ghostcheck
+      REDIS_URL: redis://redis:6379
+
+    ports:
+      - "8002:8002"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
+  detection-worker:
+    build:
+      context: ./services/detection-service
+
+    container_name: ghostcheck-detection-worker
+
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ghostcheck:ghostcheck@postgres:5432/ghostcheck
+      REDIS_URL: redis://redis:6379
+
+    command:
+      [
+        "python",
+        "-u",
+        "-m",
+        "app.worker"
+      ]
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 
 volumes:
